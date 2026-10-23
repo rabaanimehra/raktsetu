@@ -978,6 +978,8 @@
 
   // Form: submits via FormSubmit.co to rabaanimehra@gmail.com, CC'd to rabaanimehra@gmail.com.
   // No backend needed, but the destination email must be confirmed once (see comment above the form).
+  // The "Thank you" screen only appears once FormSubmit has actually confirmed the response was
+  // received (res.ok) — never on click alone.
   const form = document.getElementById('pilotForm');
   const formError = document.getElementById('formError');
   form.addEventListener('submit', async (ev) => {
@@ -994,6 +996,10 @@
         body: JSON.stringify(Object.fromEntries(new FormData(form)))
       });
       if (!res.ok) throw new Error('Submission failed');
+      // Response confirmed sent — show a brief "Sent" confirmation before switching to the thank-you screen,
+      // so it's visible that this only happens once the response has actually gone through.
+      submitBtn.textContent = 'Sent ✓';
+      await new Promise(r => setTimeout(r, 700));
       form.style.display = 'none';
       document.getElementById('thanks').classList.add('show');
     } catch (err) {
