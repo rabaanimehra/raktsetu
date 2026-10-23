@@ -306,6 +306,7 @@
         <li><a href="#validation">Validation</a></li>
         <li><a href="#docs">Open files</a></li>
         <li><a href="#team">Founder</a></li>
+        <li><a href="https://github.com/rabaanimehra/raktsetu" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="#waitlist" class="btn btn-primary">Join the pilot</a></li>
       </ul>
     </nav>
@@ -537,28 +538,6 @@
       <div class="ph ph-4x3" role="img" aria-label="Photo placeholder: prototype version 2"></div>
     </div>
 
-    <!-- BILL OF MATERIALS
-         Fill in what you actually paid. Delete any row you did not use.
-         Typical Indian retail for reference: Raspberry Pi 5 4GB about ₹5,500–6,200, 8GB about ₹7,200–8,000. -->
-    <h3 class="sub">Bill of materials</h3>
-    <p>Every part, what it does, and what it cost.</p>
-    <div class="table-scroll">
-      <table class="compare bom">
-        <thead>
-          <tr><th>Part</th><th>What it does</th><th>Cost</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Raspberry Pi 5</td><td>Runs the model and the interface, fully offline</td><td><span class="fill">₹____</span></td></tr>
-          <tr><td>Camera module</td><td>Photographs the nail bed inside the chamber</td><td><span class="fill">₹____</span></td></tr>
-          <tr><td>MAX30102 sensor</td><td>Red and infrared optical readings at the fingertip</td><td><span class="fill">₹____</span></td></tr>
-          <tr><td>Illumination</td><td>Fixed, repeatable light inside the chamber</td><td><span class="fill">₹____</span></td></tr>
-          <tr><td>Enclosure</td><td>CAD-designed, light-shielded finger chamber</td><td><span class="fill">₹____</span></td></tr>
-          <tr><td>Display and power</td><td>Shows the result and powers the device in the field</td><td><span class="fill">₹____</span></td></tr>
-          <tr class="total"><td>Total</td><td>One-time cost, no consumables per test</td><td><span class="fill">₹____</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="table-note">For comparison, a HemoCue Hb 301 point-of-care haemoglobin analyser costs about US$503 at UNICEF supply prices, plus a disposable microcuvette and lancet for every single test.</p>
   </div>
 </section>
 
@@ -700,13 +679,13 @@
       </div>
     </div>
 
-    <!-- RESULTS: replace each red-dashed value with the number from your validation sheet -->
+    <!-- RESULTS: once your validation sheet is final, replace each "In progress" with the real number -->
     <div class="metrics">
-      <div class="metric reveal"><b><span class="fill">__%</span></b><p>Sensitivity: share of anemic people RaktSetu correctly flags for a blood test.</p></div>
-      <div class="metric reveal"><b><span class="fill">__%</span></b><p>Specificity: share of non-anemic people it correctly clears.</p></div>
-      <div class="metric reveal"><b><span class="fill">__ g/dL</span></b><p>Mean absolute error of the haemoglobin estimate against lab values.</p></div>
+      <div class="metric reveal"><b style="font-size:1.6rem">In progress</b><p>Sensitivity: share of anemic people RaktSetu correctly flags for a blood test.</p></div>
+      <div class="metric reveal"><b style="font-size:1.6rem">In progress</b><p>Specificity: share of non-anemic people it correctly clears.</p></div>
+      <div class="metric reveal"><b style="font-size:1.6rem">In progress</b><p>Mean absolute error of the haemoglobin estimate against lab values.</p></div>
     </div>
-    <p class="metric-note">Results on the held-out validation set (Yakimov et al., 2024, n = 250).</p>
+    <p class="metric-note">Sensitivity, specificity and mean absolute error are being finalised from the validation run on the held-out set (Yakimov et al., 2024, n = 250), and will be published here once complete.</p>
 
     <div class="limits reveal">
       <h3>What is not solved yet</h3>
@@ -835,9 +814,15 @@
     </div>
 
     <div class="form-box reveal">
-      <!-- This form does not collect responses yet. Replace action="#" with a real endpoint
-           (Formspree, FormSubmit or Google Forms) and remove the preventDefault in the script below. -->
-      <form id="pilotForm" action="#" method="post" novalidate>
+      <!-- Submits via FormSubmit.co (no backend needed). Sends to rabaanimehra@gmail.com,
+           CC'd to rabaanimehra@gmail.com. IMPORTANT: the first real submission triggers a
+           one-time confirmation email to rabaanimehra@gmail.com — someone must open it and
+           click "Confirm" before any responses are delivered. -->
+      <form id="pilotForm" novalidate>
+        <input type="hidden" name="_cc" value="rabaanimehra@gmail.com">
+        <input type="hidden" name="_subject" value="New RaktSetu pilot signup">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_captcha" value="false">
         <div class="field">
           <label for="name">Your name *</label>
           <input id="name" name="name" type="text" required autocomplete="name">
@@ -873,6 +858,7 @@
           <textarea id="msg" name="message" placeholder="Tell us about your setting and how many people you could screen."></textarea>
         </div>
         <p class="consent full" style="grid-column:1/-1">By submitting, you agree that the details you share will be used only for research and for reaching out about pilots. We do not sell or share your information with third parties.</p>
+        <p class="consent full" id="formError" style="grid-column:1/-1;display:none;color:var(--red-deep)">Something went wrong sending your details. Please try again, or email us directly at <a href="mailto:rabaanimehra@gmail.com" style="color:var(--red-deep);font-weight:600">rabaanimehra@gmail.com</a>.</p>
         <div class="full" style="grid-column:1/-1">
           <button type="submit" class="btn btn-primary">Submit →</button>
         </div>
@@ -959,6 +945,7 @@
       <li><a href="#build">Build log</a></li>
       <li><a href="#validation">Validation</a></li>
       <li><a href="#docs">Open files</a></li>
+      <li><a href="https://github.com/rabaanimehra/raktsetu" target="_blank" rel="noopener">GitHub</a></li>
       <li><a href="#hero">Back to top ↑</a></li>
     </ul>
   </div>
@@ -990,13 +977,31 @@
   }, {threshold:.12});
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-  // Form (front-end only until a real endpoint is added)
+  // Form: submits via FormSubmit.co to rabaanimehra@gmail.com, CC'd to rabaanimehra@gmail.com.
+  // No backend needed, but the destination email must be confirmed once (see comment above the form).
   const form = document.getElementById('pilotForm');
-  form.addEventListener('submit', (ev) => {
+  const formError = document.getElementById('formError');
+  form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     if (!form.checkValidity()) { form.reportValidity(); return; }
-    form.style.display = 'none';
-    document.getElementById('thanks').classList.add('show');
+    formError.style.display = 'none';
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    try {
+      const res = await fetch('https://formsubmit.co/ajax/rabaanimehra@gmail.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(form)))
+      });
+      if (!res.ok) throw new Error('Submission failed');
+      form.style.display = 'none';
+      document.getElementById('thanks').classList.add('show');
+    } catch (err) {
+      formError.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit →';
+    }
   });
 </script>
 </body>
