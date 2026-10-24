@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NailScan</title>
+<script>
+  // apply saved theme before paint
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("nailscan-theme"); } catch (e) {}
+    if (!t) t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
+<style>
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url(/static/fonts/barlow-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url(/static/fonts/barlow-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url(/static/fonts/barlow-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 700; font-display: swap; src: url(/static/fonts/barlow-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; font-display: swap; src: url(/static/fonts/barlow-semi-condensed-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 600; font-display: swap; src: url(/static/fonts/barlow-semi-condensed-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; font-display: swap; src: url(/static/fonts/barlow-semi-condensed-latin-700-normal.woff2) format("woff2"); }
+
+:root {
+  --bg: #F4F6F8; --surface: #FFFFFF; --surface-2: #EBEEF2; --line: #D9DEE4;
+  --ink: #17202A; --ink-2: #4A5663; --ink-3: #7A8591;
+  --accent: #1F3A5F; --accent-ink: #FFFFFF;
+  --ok: #1F8A5B; --warn: #B07216; --fail: #C0392B;
+  --viewer: #1B2129;
+  --s1: #C24A5C; --s2: #D46E7A; --s3: #DF9196; --s4: #E8B2B1; --s5: #EFCFCB; --s6: #F4E4E0;
+  --r-lg: 16px; --r-md: 10px; --r-sm: 7px;
+  --font: "Barlow", "DejaVu Sans", system-ui, sans-serif;
+  --font-num: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  --shadow: 0 1px 2px rgba(23,32,42,.06), 0 8px 24px rgba(23,32,42,.07);
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #161B21; --surface: #1E242C; --surface-2: #262E37; --line: #323B45;
+  --ink: #E6EBF0; --ink-2: #A9B4BF; --ink-3: #7D8894;
+  --accent: #CFDBEA; --accent-ink: #14202E;
+  --ok: #4CC38A; --warn: #E0A53A; --fail: #F06A5D;
+  --viewer: #0F1318;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.28);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 15px/1.45 var(--font);
+  -webkit-font-smoothing: antialiased; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+svg.i { width: 20px; height: 20px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- app shell ---------- */
+.app { height: 100dvh; display: grid; grid-template-rows: auto 1fr; }
+.bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--line); background: var(--surface);
+}
+.brand { display: flex; align-items: center; gap: 8px; font: 700 19px/1 var(--font-num); letter-spacing: .01em; }
+.brand-mark { width: 22px; height: 26px; }
+.cam-pill {
+  display: inline-flex; align-items: center; gap: 7px; margin-left: 10px;
+  padding: 5px 11px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); font-size: 13px; white-space: nowrap;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.fail { background: var(--fail); }
+.spacer { flex: 1; }
+.icon-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 40px; min-width: 40px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--ink);
+}
+.icon-btn:hover { background: var(--surface-2); }
+.icon-btn .label { font-weight: 500; }
+
+.stage { min-height: 0; display: grid; grid-template-columns: 1fr 296px; }
+
+/* ---------- viewer ---------- */
+.viewer { min-width: 0; min-height: 0; position: relative; background: var(--viewer); display: grid; place-items: center; padding: 12px; }
+.viewport {
+  position: relative; overflow: hidden; border-radius: var(--r-lg); background: #000;
+  touch-action: none; user-select: none; cursor: grab;
+}
+.viewport.dragging { cursor: grabbing; }
+#feed {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block;
+  transform-origin: 0 0; will-change: transform; pointer-events: none;
+}
+.guides { position: absolute; inset: 14px; pointer-events: none; }
+.guides i { position: absolute; width: 34px; height: 34px; border: 0 solid rgba(255,255,255,.85); }
+.guides i:nth-child(1) { left: 0; top: 0; border-left-width: 3px; border-top-width: 3px; border-top-left-radius: 10px; }
+.guides i:nth-child(2) { right: 0; top: 0; border-right-width: 3px; border-top-width: 3px; border-top-right-radius: 10px; }
+.guides i:nth-child(3) { left: 0; bottom: 0; border-left-width: 3px; border-bottom-width: 3px; border-bottom-left-radius: 10px; }
+.guides i:nth-child(4) { right: 0; bottom: 0; border-right-width: 3px; border-bottom-width: 3px; border-bottom-right-radius: 10px; }
+.zoom-badge {
+  position: absolute; left: 14px; bottom: 14px; padding: 4px 10px; border-radius: 999px;
+  background: rgba(10,14,18,.62); color: #fff; font: 600 15px/1.3 var(--font-num); pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.flash.go { animation: flash .45s ease-out; }
+@keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+.empty {
+  position: absolute; inset: 0; display: none; place-content: center; justify-items: center; gap: 12px; text-align: center;
+  color: #DCE3EA; padding: 24px;
+}
+.empty.show { display: grid; }
+.empty h2 { margin: 0; font: 600 20px/1.2 var(--font-num); color: #fff; }
+.empty p { margin: 0; max-width: 34ch; color: #B8C2CC; }
+
+/* ---------- control rail ---------- */
+.rail {
+  min-height: 0; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 14px; padding: 14px 16px 16px;
+}
+.group h3 { margin: 0 0 8px; font: 600 15px/1.2 var(--font); color: var(--ink); }
+.hint { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+.zoom-row { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; }
+.zoom-row .icon-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+.meters { display: grid; gap: 2px; }
+.meter { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 9px; padding: 5px 0; font-size: 14px; }
+.meter .v { font: 600 15px/1 var(--font-num); }
+details.settings { border-top: 1px solid var(--line); padding-top: 10px; }
+details.settings summary { list-style: none; display: flex; align-items: center; justify-content: space-between; font-weight: 600; cursor: pointer; min-height: 32px; }
+details.settings summary::-webkit-details-marker { display: none; }
+details.settings summary svg { transition: transform .2s; }
+details.settings[open] summary svg { transform: rotate(180deg); }
+.slider { margin-top: 10px; }
+.slider label { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
+.slider label b { font: 600 14px/1 var(--font-num); color: var(--ink); }
+.shutter-zone { margin-top: auto; display: grid; justify-items: center; gap: 10px; padding-top: 6px; }
+.shutter {
+  position: relative; width: 86px; height: 86px; border-radius: 50%; border: 4px solid var(--ink);
+  background: var(--surface); padding: 5px; transition: transform .12s;
+}
+.shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--accent); transition: transform .12s; }
+.shutter:active { transform: scale(.95); }
+.shutter:disabled { opacity: .4; cursor: not-allowed; }
+.shutter.busy span { transform: scale(.55); border-radius: 30%; }
+.shutter.busy::after {
+  content: ""; position: absolute; inset: -9px; border-radius: 50%;
+  border: 3px solid transparent; border-top-color: var(--accent); animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.shutter-label { font: 600 15px/1 var(--font); }
+.link-btn { background: none; border: 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 6px; font-size: 14px; }
+.link-btn:hover { color: var(--ink); }
+
+/* ---------- report sheet ---------- */
+.sheet {
+  position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; grid-template-rows: auto 1fr;
+  transform: translateY(100%); visibility: hidden; transition: transform .32s cubic-bezier(.2,.8,.2,1), visibility 0s .32s;
+}
+.sheet.open { transform: none; visibility: visible; transition: transform .32s cubic-bezier(.2,.8,.2,1); }
+.sheet-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.sheet-bar .title { font: 600 16px/1.2 var(--font); }
+.sheet-bar .title small { display: block; font: 400 13px/1.2 var(--font); color: var(--ink-2); }
+.sheet-body { overflow-y: auto; padding: 20px 20px 40px; }
+.report { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px 28px; align-items: start; }
+.report > .full { grid-column: 1 / -1; }
+
+.verdict { padding: 22px 24px 20px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); }
+.verdict-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+.verdict h1 { margin: 0; font: 700 38px/1.05 var(--font-num); letter-spacing: -.005em; }
+.verdict .sub { margin: 6px 0 0; color: var(--ink-2); max-width: 60ch; }
+.score { text-align: right; }
+.score b { display: block; font: 700 38px/1 var(--font-num); }
+.score small { color: var(--ink-2); font-size: 13px; }
+.scale { margin-top: 22px; }
+.scale-track { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); height: 34px; border-radius: 8px; overflow: visible; }
+.scale-track > span:first-child { border-radius: 8px 0 0 8px; }
+.scale-track > span:nth-child(6) { border-radius: 0 8px 8px 0; }
+.scale-track > span:nth-child(1) { background: var(--s1); } .scale-track > span:nth-child(2) { background: var(--s2); }
+.scale-track > span:nth-child(3) { background: var(--s3); } .scale-track > span:nth-child(4) { background: var(--s4); }
+.scale-track > span:nth-child(5) { background: var(--s5); } .scale-track > span:nth-child(6) { background: var(--s6); }
+.thr { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 2px dashed var(--ink); }
+.thr em { position: absolute; top: -20px; left: 0; transform: translateX(-50%); white-space: nowrap; font: 500 12px/1 var(--font); font-style: normal; color: var(--ink-2); }
+.marker { position: absolute; top: 50%; width: 22px; height: 46px; transform: translate(-50%, -50%); border-radius: 11px; border: 3px solid var(--ink); background: transparent; box-shadow: 0 0 0 2px var(--surface); transition: left .6s cubic-bezier(.2,.8,.2,1); }
+.scale-ends { display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-md); background: color-mix(in srgb, var(--warn) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); }
+.notice.fail { background: color-mix(in srgb, var(--fail) 12%, var(--surface)); border-color: color-mix(in srgb, var(--fail) 45%, transparent); }
+.notice p { margin: 0; }
+
+.sec h2 { margin: 0 0 10px; font: 600 17px/1.2 var(--font); }
+.figs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.figs figure { margin: 0; }
+.figs img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--viewer); border-radius: var(--r-md); display: block; }
+.figs figcaption { margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+
+.checks { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.checks li { display: grid; grid-template-columns: 22px 1fr auto; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.checks .ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff; grid-row: span 2; margin-top: 1px; }
+.checks .ic svg { width: 14px; height: 14px; stroke-width: 2.6; }
+.checks .ok .ic { background: var(--ok); } .checks .warn .ic { background: var(--warn); } .checks .fail .ic { background: var(--fail); }
+.checks .n { font-weight: 600; }
+.checks .val { font: 600 15px/1.3 var(--font-num); text-align: right; }
+.checks .t { grid-column: 2 / -1; font-size: 13.5px; color: var(--ink-2); }
+
+.colour { display: grid; grid-template-columns: 92px 1fr; gap: 16px; align-items: center; }
+.chip { width: 92px; height: 92px; border-radius: 50%; border: 1px solid var(--line); }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 0; }
+.stats div { min-width: 0; }
+.stats dt { font-size: 13px; color: var(--ink-2); }
+.stats dd { margin: 2px 0 0; font: 600 18px/1.2 var(--font-num); }
+.hist { width: 100%; height: 110px; margin-top: 14px; display: block; }
+.hist-legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+.hist-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.details { display: grid; grid-template-columns: max-content 1fr; gap: 7px 18px; margin: 0; font-size: 14px; }
+.details dt { color: var(--ink-2); }
+.details dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+.train { padding: 18px 20px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); }
+.train p { margin: 0 0 12px; color: var(--ink-2); max-width: 70ch; }
+.form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 10px; align-items: end; }
+.field label { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 4px; }
+.field input, .field select {
+  width: 100%; height: 42px; padding: 0 10px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--bg);
+}
+.btn {
+  height: 42px; padding: 0 16px; border-radius: var(--r-sm); border: 1px solid var(--accent);
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; white-space: nowrap;
+}
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.train-result { margin-top: 10px; font-size: 14px; }
+.train-result a { color: var(--ink); }
+.disclaimer { font-size: 13px; color: var(--ink-3); max-width: 80ch; }
+
+/* ---------- history drawer ---------- */
+.drawer-bg { position: fixed; inset: 0; z-index: 30; background: rgba(8,12,16,.45); opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
+.drawer-bg.open { opacity: 1; visibility: visible; transition: opacity .2s; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 31; width: min(380px, 92vw); background: var(--surface);
+  display: grid; grid-template-rows: auto 1fr; transform: translateX(100%); transition: transform .25s cubic-bezier(.2,.8,.2,1);
+  border-left: 1px solid var(--line);
+}
+.drawer.open { transform: none; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.hist-list { overflow-y: auto; list-style: none; margin: 0; padding: 6px 8px; }
+.hist-list button { width: 100%; display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; padding: 8px; border: 0; border-radius: var(--r-md); background: none; text-align: left; }
+.hist-list button:hover { background: var(--surface-2); }
+.hist-list img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; background: var(--viewer); }
+.hist-list .l { font-weight: 600; }
+.hist-list .d { font-size: 13px; color: var(--ink-2); }
+.hist-list .p { font: 600 16px/1 var(--font-num); }
+.hist-empty { padding: 24px 16px; color: var(--ink-2); }
+
+.toast {
+  position: fixed; left: 50%; bottom: 18px; z-index: 50; transform: translate(-50%, 20px); opacity: 0;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: var(--r-md); font-weight: 500;
+  transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- small screens ---------- */
+@media (max-width: 860px) { .stage { grid-template-columns: 1fr 260px; } .rail { padding: 12px; gap: 10px; } .cam-pill .txt-long { display: none; } }
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  .app { height: auto; min-height: 100dvh; }
+  .stage { grid-template-columns: 1fr; }
+  .viewer { height: 56vh; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); }
+  .report { grid-template-columns: 1fr; }
+  .form { grid-template-columns: 1fr 1fr; }
+  .icon-btn .label { display: none; }
+}
+@media (max-height: 520px) and (min-width: 761px) {
+  .bar { padding-top: 5px; padding-bottom: 5px; }
+  .icon-btn { height: 36px; min-width: 36px; }
+  .rail { gap: 9px; padding-top: 10px; }
+  .hint { display: none; }
+  .shutter { width: 74px; height: 74px; }
+  .viewer { padding: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+@media print {
+  body { overflow: visible; background: #fff; color: #000; }
+  .app, .drawer, .drawer-bg, .toast, .sheet-bar .icon-btn, .train { display: none !important; }
+  .sheet { position: static; transform: none; visibility: visible; display: block; background: #fff; }
+  .sheet-body { overflow: visible; padding: 0; }
+  .verdict { box-shadow: none; border: 1px solid #ccc; }
+  .report { gap: 14px 20px; }
+  .sec, .verdict, figure { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="i-hist" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-bang" viewBox="0 0 24 24"><path d="M12 6v8M12 18.5v.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 10"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 22 26" aria-hidden="true">
+        <path d="M3 25V11a8 8 0 0 1 16 0v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M6.5 13.5a4.5 4.5 0 0 1 9 0V18a4.5 4.5 0 0 1-9 0z" fill="var(--s3)"/>
+      </svg>
+      NailScan
+    </div>
+    <span class="cam-pill" id="camPill"><span class="dot" id="camDot"></span><span id="camText">Connecting to webcam</span></span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="historyBtn" aria-label="Scan history"><svg class="i"><use href="#i-hist"/></svg><span class="label">History</span></button>
+    <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg class="i"><use id="themeIcon" href="#i-moon"/></svg></button>
+  </header>
+
+  <main class="stage">
+    <section class="viewer" id="viewer">
+      <div class="viewport" id="viewport">
+        <img id="feed" alt="Live webcam preview">
+        <div class="guides" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="zoom-badge num" id="zoomBadge">1.0×</div>
+        <div class="flash" id="flash"></div>
+      </div>
+      <div class="empty" id="empty">
+        <h2 id="emptyTitle">Webcam not found</h2>
+        <p id="emptyText">Plug in the webcam and it will appear here. You can still analyse a saved photo.</p>
+        <button class="btn" data-upload>Upload a photo</button>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <div class="group">
+        <h3>Zoom</h3>
+        <div class="zoom-row">
+          <button class="icon-btn" id="zoomOut" aria-label="Zoom out"><svg class="i"><use href="#i-minus"/></svg></button>
+          <input type="range" id="zoomSlider" min="1" max="8" step="0.1" value="1" aria-label="Zoom level">
+          <button class="icon-btn" id="zoomIn" aria-label="Zoom in"><svg class="i"><use href="#i-plus"/></svg></button>
+        </div>
+        <p class="hint">Fill the frame with one nail. Drag to move, pinch to zoom, double-tap to reset.</p>
+      </div>
+
+      <div class="group">
+        <h3>Live photo check</h3>
+        <div class="meters">
+          <div class="meter"><span class="dot" id="mClipDot"></span><span>Red clipping</span><span class="v" id="mClip">–</span></div>
+          <div class="meter"><span class="dot" id="mBrightDot"></span><span>Brightness</span><span class="v" id="mBright">–</span></div>
+          <div class="meter"><span class="dot" id="mCastDot"></span><span>Red tint</span><span class="v" id="mCast">–</span></div>
+        </div>
+      </div>
+
+      <details class="settings" id="settings">
+        <summary>Camera settings <svg class="i"><use href="#i-chev"/></svg></summary>
+        <div class="slider"><label for="sExp">Exposure <b id="vExp">–</b></label><input type="range" id="sExp" min="1" max="1000" step="1"></div>
+        <div class="slider"><label for="sWb">White balance (K) <b id="vWb">–</b></label><input type="range" id="sWb" min="2800" max="6500" step="50"></div>
+        <div class="slider"><label for="sGain">Gain <b id="vGain">–</b></label><input type="range" id="sGain" min="0" max="100" step="1"></div>
+        <p class="hint">Lower the exposure until red clipping is under 1%. Settings are saved for next time.</p>
+      </details>
+
+      <div class="shutter-zone">
+        <button class="shutter" id="shutter" aria-label="Capture and analyse"><span></span></button>
+        <div class="shutter-label">Capture and analyse</div>
+        <button class="link-btn" data-upload>Upload a photo instead</button>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<!-- report -->
+<section class="sheet" id="sheet" aria-label="Scan report" aria-hidden="true">
+  <div class="sheet-bar">
+    <button class="icon-btn" id="closeReport"><svg class="i"><use href="#i-back"/></svg><span class="label">Camera</span></button>
+    <div class="title">Scan report<small id="rTime"></small></div>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="deleteBtn" aria-label="Delete this scan"><svg class="i"><use href="#i-trash"/></svg><span class="label" id="deleteLabel">Delete</span></button>
+    <button class="icon-btn" id="printBtn"><svg class="i"><use href="#i-print"/></svg><span class="label">Save PDF</span></button>
+    <button class="btn" id="againBtn">Scan again</button>
+  </div>
+  <div class="sheet-body">
+    <div class="report" id="report"></div>
+  </div>
+</section>
+
+<!-- history -->
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer" aria-label="Scan history" aria-hidden="true">
+  <div class="drawer-head">Recent scans <button class="icon-btn" id="closeDrawer" aria-label="Close history"><svg class="i"><use href="#i-close"/></svg></button></div>
+  <ul class="hist-list" id="histList"></ul>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------------- theme ----------------
+  const root = document.documentElement;
+  function syncThemeBtn() {
+    const dark = root.dataset.theme === "dark";
+    $("#themeIcon").setAttribute("href", dark ? "#i-sun" : "#i-moon");
+    $("#themeBtn").setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  }
+  $("#themeBtn").onclick = () => {
+    root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+    try { localStorage.setItem("nailscan-theme", root.dataset.theme); } catch (e) {}
+    syncThemeBtn();
+  };
+  syncThemeBtn();
+
+  // ---------------- toast ----------------
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+  }
+
+  // ---------------- viewport fit + zoom/pan ----------------
+  const viewer = $("#viewer"), vp = $("#viewport"), feed = $("#feed");
+  const view = { z: 1, cx: 0.5, cy: 0.5, ar: 16 / 9 };
+  const ZMIN = 1, ZMAX = 8;
+
+  function fit() {
+    const pad = parseFloat(getComputedStyle(viewer).paddingLeft) * 2;
+    const W = viewer.clientWidth - pad, H = viewer.clientHeight - pad;
+    let w = W, h = W / view.ar;
+    if (h > H) { h = H; w = H * view.ar; }
+    vp.style.width = Math.max(0, w) + "px"; vp.style.height = Math.max(0, h) + "px";
+    apply();
+  }
+  function clampView() {
+    view.z = Math.min(ZMAX, Math.max(ZMIN, view.z));
+    const half = 0.5 / view.z;
+    view.cx = Math.min(1 - half, Math.max(half, view.cx));
+    view.cy = Math.min(1 - half, Math.max(half, view.cy));
+  }
+  function apply() {
+    clampView();
+    const W = vp.clientWidth, H = vp.clientHeight, z = view.z;
+    feed.style.transform = `translate(${W / 2 - view.cx * W * z}px, ${H / 2 - view.cy * H * z}px) scale(${z})`;
+    $("#zoomBadge").textContent = z.toFixed(1) + "×";
+    $("#zoomSlider").value = z;
+  }
+  function zoomTo(z, fx = 0.5, fy = 0.5) {           // keep point (fx,fy) of the viewport fixed
+    const px = view.cx + (fx - 0.5) / view.z, py = view.cy + (fy - 0.5) / view.z;
+    view.z = Math.min(ZMAX, Math.max(ZMIN, z));
+    view.cx = px - (fx - 0.5) / view.z; view.cy = py - (fy - 0.5) / view.z;
+    apply();
+  }
+  new ResizeObserver(fit).observe(viewer);
+  $("#zoomSlider").oninput = (e) => zoomTo(parseFloat(e.target.value));
+  $("#zoomIn").onclick = () => zoomTo(view.z * 1.25);
+  $("#zoomOut").onclick = () => zoomTo(view.z / 1.25);
+  vp.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = vp.getBoundingClientRect();
+    zoomTo(view.z * Math.exp(-e.deltaY * 0.0015), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+  }, { passive: false });
+
+  const ptrs = new Map(); let pinch = null, lastTap = 0;
+  vp.addEventListener("pointerdown", (e) => {
+    vp.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    vp.classList.add("dragging");
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: view.z };
+    }
+    const now = Date.now();
+    if (ptrs.size === 1 && now - lastTap < 300) { view.z = 1; view.cx = view.cy = 0.5; apply(); }
+    lastTap = now;
+  });
+  vp.addEventListener("pointermove", (e) => {
+    const p = ptrs.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 1) {
+      view.cx -= dx / (vp.clientWidth * view.z);
+      view.cy -= dy / (vp.clientHeight * view.z);
+      apply();
+    } else if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()], r = vp.getBoundingClientRect();
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      zoomTo(pinch.z * d / pinch.d, ((a.x + b.x) / 2 - r.left) / r.width, ((a.y + b.y) / 2 - r.top) / r.height);
+    }
+  });
+  const endPtr = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) vp.classList.remove("dragging"); };
+  vp.addEventListener("pointerup", endPtr); vp.addEventListener("pointercancel", endPtr);
+
+  // ---------------- live feed ----------------
+  function startFeed() { feed.src = "/stream?t=" + Date.now(); }
+  feed.onload = () => { if (feed.naturalWidth) { const ar = feed.naturalWidth / feed.naturalHeight; if (Math.abs(ar - view.ar) > 0.01) { view.ar = ar; fit(); } } };
+  feed.onerror = () => setTimeout(startFeed, 2000);
+  startFeed();
+
+  // ---------------- status ----------------
+  let camOk = false, statusData = null;
+  async function pollStatus() {
+    try {
+      const s = await (await fetch("/api/status")).json();
+      statusData = s;
+      const c = s.camera;
+      camOk = c.status === "ok";
+      if (c.frame_size) { const ar = c.frame_size[0] / c.frame_size[1]; if (Math.abs(ar - view.ar) > 0.01) { view.ar = ar; fit(); } }
+      $("#camDot").className = "dot " + (camOk ? (c.locked.length || c.fake ? "ok" : "warn") : "fail");
+      $("#camText").innerHTML = camOk
+        ? (c.fake ? "Test image" : `Webcam ready<span class="txt-long">${c.fps ? ", " + Math.round(c.fps) + " fps" : ""}${c.locked.length ? "" : ", colour not locked"}</span>`)
+        : esc(c.message || "Webcam not found");
+      $("#empty").classList.toggle("show", !camOk);
+      vp.style.visibility = camOk ? "visible" : "hidden";
+      $("#shutter").disabled = !camOk;
+      if (!camOk) $("#emptyText").textContent = (c.message || "Webcam not found") + ". Plug it in and it will appear here, or analyse a saved photo.";
+      syncSliders(s);
+    } catch (e) {
+      $("#camDot").className = "dot fail"; $("#camText").textContent = "NailScan server is not running";
+    }
+  }
+  setInterval(pollStatus, 4000); pollStatus();
+
+  function level(el, dotEl, value, text, status) { el.textContent = text; dotEl.className = "dot " + status; }
+  async function pollLive() {
+    if (!camOk || document.hidden || $("#sheet").classList.contains("open")) return;
+    try {
+      const l = await (await fetch("/api/live")).json();
+      if (!l.ok) return;
+      level($("#mClip"), $("#mClipDot"), l.red_clip, l.red_clip.toFixed(1) + "%", l.red_clip < 1 ? "ok" : l.red_clip < 5 ? "warn" : "fail");
+      level($("#mBright"), $("#mBrightDot"), l.brightness, l.brightness, l.brightness >= 70 && l.brightness <= 200 ? "ok" : l.brightness >= 45 && l.brightness <= 225 ? "warn" : "fail");
+      level($("#mCast"), $("#mCastDot"), l.cast, l.cast.toFixed(2), l.cast < 1.5 ? "ok" : l.cast < 2 ? "warn" : "fail");
+    } catch (e) {}
+  }
+  setInterval(pollLive, 1200);
+
+  // ---------------- camera settings ----------------
+  const sliders = { exposure: ["#sExp", "#vExp"], white_balance_k: ["#sWb", "#vWb"], gain: ["#sGain", "#vGain"] };
+  let slidersReady = false, sendTimer;
+  function syncSliders(s) {
+    if (slidersReady) return;
+    for (const [k, [sl, lab]] of Object.entries(sliders)) {
+      const r = s.ranges[k], el = $(sl);
+      if (r) { el.min = r.min; el.max = r.max; el.step = r.step || 1; }
+      el.value = s.settings[k]; $(lab).textContent = s.settings[k];
+      el.disabled = !r && !s.camera.fake && camOk;
+      el.oninput = () => {
+        $(lab).textContent = el.value;
+        clearTimeout(sendTimer);
+        sendTimer = setTimeout(() => fetch("/api/camera", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [k]: parseInt(el.value, 10) }) }), 250);
+      };
+    }
+    slidersReady = true;
+  }
+
+  // ---------------- capture / upload ----------------
+  const shutter = $("#shutter");
+  shutter.onclick = async () => {
+    if (shutter.classList.contains("busy")) return;
+    shutter.classList.add("busy");
+    const fl = $("#flash"); fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
+    try {
+      const r = await fetch("/api/capture", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zoom: view.z, cx: view.cx, cy: view.cy }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Capture failed.");
+      openReport(data);
+    } catch (e) { toast(e.message); }
+    finally { shutter.classList.remove("busy"); }
+  };
+  document.querySelectorAll("[data-upload]").forEach((b) => b.onclick = () => $("#fileInput").click());
+  $("#fileInput").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const fd = new FormData(); fd.append("photo", f);
+    toast("Analysing photo…");
+    try {
+      const r = await fetch("/api/analyze", { method: "POST", body: fd });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Analysis failed.");
+      openReport(data);
+    } catch (err) { toast(err.message); }
+    e.target.value = "";
+  };
+
+  // ---------------- report ----------------
+  let current = null;
+  const icon = (st) => `<svg class="i"><use href="#i-${st === "ok" ? "check" : st === "warn" ? "bang" : "x"}"/></svg>`;
+  const fmtTime = (iso) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+
+  function histogramSvg(h) {
+    const W = 320, H = 100, n = h.r.length, max = Math.max(1, ...h.r, ...h.g, ...h.b);
+    const path = (arr) => {
+      let d = `M0 ${H}`;
+      arr.forEach((v, i) => { const x = (i / (n - 1)) * W, y = H - (v / max) * (H - 4); d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; });
+      return d + ` L${W} ${H} Z`;
+    };
+    return `<svg class="hist" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Colour histogram of the nail bed">
+      <path d="${path(h.b)}" fill="#3D7DD8" fill-opacity=".35" stroke="#3D7DD8" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+      <path d="${path(h.g)}" fill="#2E9E6A" fill-opacity=".35" stroke="#2E9E6A" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+      <path d="${path(h.r)}" fill="#D9475A" fill-opacity=".35" stroke="#D9475A" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="hist-legend"><span><i style="background:#D9475A"></i>Red</span><span><i style="background:#2E9E6A"></i>Green</span><span><i style="background:#3D7DD8"></i>Blue</span><span style="margin-left:auto">Dark to bright</span></div>`;
+  }
+
+  function trainBlock(r) {
+    const tl = r.training_label;
+    return `<section class="train full" id="trainBox">
+      <div class="sec"><h2>Add to training data</h2></div>
+      <p>If this person has a recent blood test, enter their hemoglobin. The nail photo is saved with the right label, so you can retrain the model on photos from this device.</p>
+      <div class="form">
+        <div class="field"><label for="fHb">Hemoglobin (g/dL)</label><input id="fHb" inputmode="decimal" placeholder="e.g. 11.4" value="${tl ? tl.hb : ""}"></div>
+        <div class="field"><label for="fGroup">Person</label><select id="fGroup">
+          ${[["female", "Adult woman"], ["male", "Adult man"], ["pregnant", "Pregnant woman"], ["child", "Child under 5"]]
+            .map(([v, t]) => `<option value="${v}" ${tl && tl.group === v ? "selected" : ""}>${t}</option>`).join("")}
+        </select></div>
+        <div class="field"><label for="fSkin">Skin tone</label><select id="fSkin">
+          ${[["", "Not recorded"], ["light", "Light"], ["medium", "Medium"], ["dark", "Dark"]]
+            .map(([v, t]) => `<option value="${v}" ${tl && tl.skin_tone === v ? "selected" : ""}>${t}</option>`).join("")}
+        </select></div>
+        <div class="field"><label for="fPid">Person ID (optional)</label><input id="fPid" placeholder="e.g. P014" value="${esc(tl ? tl.person_id : "")}"></div>
+        <button class="btn" id="fSave">${tl ? "Update label" : "Add to training data"}</button>
+      </div>
+      <div class="train-result" id="trainResult">${tl ? `Saved as <b>${tl.class === "anemic" ? "anemic" : "not anemic"}</b> (Hb ${tl.hb} g/dL, cut-off ${tl.cutoff}).` : ""}</div>
+    </section>`;
+  }
+
+  function renderReport(r) {
+    const res = r.result, q = r.quality, c = r.colour, m = r.model;
+    const pct = (x) => (x * 100).toFixed(1) + "%";
+    const issues = q.checks.filter((k) => k.status !== "ok");
+    const metrics = m.test_metrics || {};
+    const headline = res.anemic ? "Possible anemia" : "No sign of anemia";
+    const sub = res.anemic
+      ? `The nail bed looks paler than the model's decision point. Confirm with a hemoglobin blood test.`
+      : `The nail bed colour is on the healthy side of the decision point. A blood test is still the only way to rule out anemia.`;
+    $("#rTime").textContent = fmtTime(r.time) + (r.source === "upload" ? ", uploaded photo" : "");
+    $("#report").innerHTML = `
+      <section class="verdict full">
+        <div class="verdict-head">
+          <div><h1>${headline}</h1><p class="sub">${sub}</p></div>
+          <div class="score"><b class="num">${res.probability.toFixed(2)}</b><small>Anemia score, ${res.confidence.toLowerCase()} confidence</small></div>
+        </div>
+        <div class="scale" aria-label="Score ${res.probability.toFixed(2)} on a scale from pink to pale; decision point ${res.threshold.toFixed(2)}">
+          <div class="scale-track">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <div class="thr" style="left:${res.threshold * 100}%"><em>Decision point ${res.threshold.toFixed(2)}</em></div>
+            <div class="marker" id="marker" style="left:0%"></div>
+          </div>
+          <div class="scale-ends"><span>Pink nail bed, score 0</span><span>Pale nail bed, score 1</span></div>
+        </div>
+      </section>
+      ${issues.length ? `<div class="notice full ${q.overall === "fail" ? "fail" : ""}"><svg class="i"><use href="#i-bang"/></svg>
+        <p><b>${q.overall === "fail" ? "Retake this photo." : "Check the photo quality."}</b> ${esc(issues.map((k) => k.name.toLowerCase()).join(", "))} ${issues.length > 1 ? "need" : "needs"} attention, which can make the result less reliable.</p></div>` : ""}
+      <section class="sec full"><h2>Photos</h2>
+        <div class="figs">
+          <figure><img src="${r.images.crop}" alt="Nail analysed"><figcaption>Nail analysed</figcaption></figure>
+          <figure><img src="${r.images.input}" alt="Model input"><figcaption>What the model saw (224 × 224)</figcaption></figure>
+          <figure><img src="${r.images.frame}" alt="Full frame"><figcaption>Full frame, analysed area outlined</figcaption></figure>
+        </div>
+      </section>
+      <section class="sec"><h2>Photo quality</h2>
+        <ul class="checks">${q.checks.map((k) => `<li class="${k.status}"><span class="ic">${icon(k.status)}</span><span class="n">${esc(k.name)}</span><span class="val">${esc(k.value)}</span><span class="t">${esc(k.text)}</span></li>`).join("")}</ul>
+      </section>
+      <section class="sec"><h2>Nail-bed colour</h2>
+        <div class="colour">
+          <div class="chip" style="background:${c.hex}" title="Average nail-bed colour ${c.hex}"></div>
+          <dl class="stats">
+            <div><dt>Average colour</dt><dd class="num">${c.hex.toUpperCase()}</dd></div>
+            <div><dt>Red, green, blue</dt><dd class="num">${c.mean_rgb.map(Math.round).join(", ")}</dd></div>
+            <div><dt>Redness index</dt><dd class="num">${c.redness_index.toFixed(3)}</dd></div>
+            <div><dt>Saturation</dt><dd class="num">${c.saturation}%</dd></div>
+          </dl>
+        </div>
+        ${histogramSvg(c.histogram)}
+      </section>
+      <section class="sec"><h2>Scan details</h2>
+        <dl class="details">
+          <dt>Scan ID</dt><dd>${esc(r.id)}</dd>
+          <dt>Source</dt><dd>${r.source === "camera" ? "Webcam" : "Uploaded photo"}</dd>
+          ${r.capture.camera ? `<dt>Zoom</dt><dd class="num">${r.capture.zoom}×</dd>
+          <dt>Camera</dt><dd>Exposure ${r.capture.camera.exposure}, white balance ${r.capture.camera.white_balance_k} K, gain ${r.capture.camera.gain}</dd>` : ""}
+          <dt>Analysed area</dt><dd class="num">${r.capture.box[2] - r.capture.box[0]} × ${r.capture.box[3] - r.capture.box[1]} px of ${r.capture.frame_size.join(" × ")}</dd>
+          <dt>Score and threshold</dt><dd class="num">${res.probability.toFixed(4)} vs ${res.threshold.toFixed(4)}</dd>
+          <dt>Processing time</dt><dd class="num">${m.inference_ms} ms model, ${m.total_ms} ms total</dd>
+        </dl>
+      </section>
+      <section class="sec"><h2>About the model</h2>
+        <dl class="details">
+          <dt>Model</dt><dd>EfficientNet-B0, ${esc(m.file)}</dd>
+          ${metrics.auc ? `<dt>Tested on</dt><dd class="num">${metrics.n} unseen public-dataset photos</dd>
+          <dt>Accuracy</dt><dd class="num">${pct(metrics.accuracy)}</dd>
+          <dt>Catches anemia</dt><dd class="num">${pct(metrics.sensitivity)} of anemic cases</dd>
+          <dt>Clears healthy</dt><dd class="num">${pct(metrics.specificity)} of non-anemic cases</dd>
+          <dt>AUC</dt><dd class="num">${metrics.auc.toFixed(3)}</dd>` : ""}
+        </dl>
+        <p class="hint">These figures come from the public training datasets, not from photos taken in this enclosure.</p>
+      </section>
+      ${trainBlock(r)}
+      <p class="disclaimer full">NailScan is a screening prototype, not a medical device. It does not diagnose anemia. Anyone with a "possible anemia" result, or symptoms such as tiredness, breathlessness or pale skin, should get a hemoglobin blood test.</p>`;
+    requestAnimationFrame(() => requestAnimationFrame(() => { const mk = $("#marker"); if (mk) mk.style.left = res.probability * 100 + "%"; }));
+    $("#fSave").onclick = saveLabel;
+  }
+
+  async function saveLabel() {
+    const body = { id: current.id, hb: $("#fHb").value.replace(",", "."), group: $("#fGroup").value,
+                   skin_tone: $("#fSkin").value, person_id: $("#fPid").value };
+    try {
+      const r = await fetch("/api/label", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      const name = d.class === "anemic" ? "anemic" : "not anemic";
+      $("#trainResult").innerHTML = `Saved as <b>${name}</b> (cut-off ${d.cutoff} g/dL). Training set: ${d.counts.anemic} anemic, ${d.counts.non_anemic} not anemic. <a href="/api/training.zip">Download training data (.zip)</a>`;
+      $("#fSave").textContent = "Update label";
+      current.training_label = { class: d.class, hb: parseFloat(body.hb), group: body.group, cutoff: d.cutoff, skin_tone: body.skin_tone, person_id: body.person_id };
+      toast("Added to training data as " + name);
+    } catch (e) { toast(e.message); }
+  }
+
+  function openReport(r) {
+    current = r; renderReport(r);
+    $("#sheet").classList.add("open"); $("#sheet").setAttribute("aria-hidden", "false");
+    $("#sheet .sheet-body").scrollTop = 0;
+    resetDelete();
+    $("#closeReport").focus({ preventScroll: true });
+  }
+  function closeReport() { $("#sheet").classList.remove("open"); $("#sheet").setAttribute("aria-hidden", "true"); }
+  $("#closeReport").onclick = closeReport;
+  $("#againBtn").onclick = closeReport;
+  $("#printBtn").onclick = () => window.print();
+
+  let delArmed = false, delTimer;
+  function resetDelete() { delArmed = false; $("#deleteLabel").textContent = "Delete"; }
+  $("#deleteBtn").onclick = async () => {
+    if (!delArmed) { delArmed = true; $("#deleteLabel").textContent = "Tap again to delete"; clearTimeout(delTimer); delTimer = setTimeout(resetDelete, 3000); return; }
+    await fetch("/api/scan/" + current.id, { method: "DELETE" });
+    resetDelete(); closeReport(); toast("Scan deleted");
+  };
+
+  // ---------------- history ----------------
+  function openDrawer(open) {
+    $("#drawer").classList.toggle("open", open); $("#drawerBg").classList.toggle("open", open);
+    $("#drawer").setAttribute("aria-hidden", String(!open));
+  }
+  $("#historyBtn").onclick = async () => {
+    openDrawer(true);
+    const list = $("#histList");
+    try {
+      const items = await (await fetch("/api/history")).json();
+      list.innerHTML = items.length ? items.map((h) => `<li><button data-id="${esc(h.id)}">
+          <img src="${h.thumb}" alt="" loading="lazy">
+          <span><span class="l">${h.anemic ? "Possible anemia" : "No sign of anemia"}</span><br><span class="d">${fmtTime(h.time)}${h.quality !== "ok" ? ", check photo" : ""}${h.training_label ? ", labelled" : ""}</span></span>
+          <span class="p">${h.probability.toFixed(2)}</span></button></li>`).join("")
+        : `<li class="hist-empty">No scans yet. Capture a nail photo and it will appear here.</li>`;
+      list.querySelectorAll("button[data-id]").forEach((b) => b.onclick = async () => {
+        const r = await (await fetch("/api/scan/" + b.dataset.id)).json();
+        openDrawer(false); openReport(r);
+      });
+    } catch (e) { list.innerHTML = `<li class="hist-empty">Couldn't load the history. Check that NailScan is running.</li>`; }
+  };
+  $("#closeDrawer").onclick = () => openDrawer(false);
+  $("#drawerBg").onclick = () => openDrawer(false);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { if ($("#drawer").classList.contains("open")) openDrawer(false); else closeReport(); }
+    if ((e.key === " " || e.key === "Enter") && document.activeElement === document.body && !$("#sheet").classList.contains("open")) { e.preventDefault(); shutter.click(); }
+  });
+})();
+</script>
+</body>
+</html>
