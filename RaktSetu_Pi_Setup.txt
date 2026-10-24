@@ -1,0 +1,158 @@
+RAKTSETU / NAILSCAN - RASPBERRY PI 5 SETUP GUIDE
+================================================
+Repo: https://github.com/rabaanimehra/raktsetu
+
+
+BEFORE YOU START
+----------------
+- Raspberry Pi 5 running Raspberry Pi OS (64-bit), with the touchscreen working
+- Lenovo USB webcam plugged in
+- Pi connected to the internet (Wi-Fi or Ethernet)
+- Open a terminal: click the black terminal icon in the top bar (or press Ctrl+Alt+T)
+
+
+STEP 1 - INSTALL (one time only)
+--------------------------------
+Copy and paste this whole line into the terminal and press Enter:
+
+    git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh
+
+- Type your Pi password when asked (nothing shows while you type - that's normal).
+- Wait 3-10 minutes. It installs everything and tests the model.
+- It's done when you see:  ==> Installed successfully!
+
+Want NailScan to open full screen automatically every time the Pi starts?
+Use this line instead of the one above:
+
+    git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh --autostart
+
+
+STEP 2 - REBOOT (one time only)
+-------------------------------
+    sudo reboot
+
+This is needed once so the webcam permission takes effect.
+
+
+STEP 3 - OPEN NAILSCAN
+----------------------
+Double-click the NailScan icon on the desktop.
+(If the desktop asks "Execute / Open", choose Execute.)
+
+Or start it from the terminal:
+
+    ~/RaktSetu/device/start_ui.sh              (normal window)
+    ~/RaktSetu/device/start_ui.sh --kiosk      (full screen; press Alt+F4 to quit)
+
+From a phone or laptop on the same Wi-Fi, open:  http://<pi-ip-address>:8000
+Find the Pi's IP address with:
+
+    hostname -I
+
+
+STEP 4 - FIRST-TIME CAMERA TUNING
+---------------------------------
+1. Put a finger in the enclosure.
+2. Look at "Live photo check" on the right:
+     Red clipping  -> must be green (under 1%)
+     Brightness    -> should be green (70-200)
+     Red tint      -> green is best; the red enclosure will push this up
+3. If red clipping is not green: open "Camera settings" and drag
+   Exposure lower until it turns green.
+4. Try White balance between 4000 and 6500 and keep the one where the
+   nail looks most natural.
+Settings are saved automatically for next time.
+
+
+STEP 5 - TAKE A SCAN
+--------------------
+1. Zoom in (pinch, slider or + button) and drag until ONE nail fills the frame.
+   Only what you see in the frame is analysed.
+2. Tap the big round button.
+3. The report opens: result, score, photo-quality checks, nail colour, details.
+4. "Save PDF" saves the report.  "Scan again" goes back to the camera.
+5. "History" (top right) shows earlier scans.
+
+If the person has a recent blood test: enter their hemoglobin (g/dL) under
+"Add to training data". These labelled photos can later be downloaded as a zip
+and used in the Colab notebook to retrain the model on photos from this device.
+
+
+UPDATING (after you change something on GitHub)
+-----------------------------------------------
+    cd ~/RaktSetu && git pull && bash device/install.sh
+
+Your scans, training photos and camera settings are kept - git never touches them.
+
+
+USEFUL COMMANDS
+---------------
+Check the webcam and colours without the interface:
+    ~/RaktSetu/device/check_camera.sh
+
+Run one scan in the terminal:
+    ~/RaktSetu/device/run.sh --webcam
+
+Analyse a saved photo:
+    ~/RaktSetu/device/run.sh --image /path/to/photo.jpg
+
+See which settings your webcam supports:
+    ~/RaktSetu/device/run.sh --list-controls
+
+Is the webcam detected? (should list /dev/video0)
+    ls /dev/video*
+
+See the server log if something goes wrong:
+    cat ~/RaktSetu/device/server.log
+
+Stop NailScan if it is stuck:
+    pkill -f RaktSetu/device/server.py
+
+Turn OFF auto-start at boot:
+    rm ~/.config/autostart/nailscan.desktop
+
+
+WHERE THINGS ARE SAVED
+----------------------
+    ~/RaktSetu/device/scans/                 every scan (photos + report)
+    ~/RaktSetu/device/training_data/         labelled photos for retraining
+    ~/RaktSetu/device/camera_settings.json   your camera settings
+These contain people's photos and health data - they are NOT uploaded to GitHub.
+
+
+TROUBLESHOOTING
+---------------
+"Webcam not found"
+    - Check the USB cable, then run:  ls /dev/video*
+    - If the webcam is /dev/video1 (or higher), edit the file:
+          nano ~/RaktSetu/device/predict_pi.py
+      change  CAMERA_INDEX = 0  to  CAMERA_INDEX = 1
+      save with Ctrl+O, Enter, then Ctrl+X, and reopen NailScan.
+
+Webcam permission error
+    - Reboot once:  sudo reboot
+
+Interface doesn't open / blank page
+    - Read the log:  cat ~/RaktSetu/device/server.log
+    - Start it from the terminal to see errors:  ~/RaktSetu/device/start_ui.sh
+
+"git: command not found"
+    sudo apt install -y git
+
+"fatal: destination path '/home/.../RaktSetu' already exists"
+    It's already installed. To update instead:
+    cd ~/RaktSetu && git pull && bash device/install.sh
+
+Install failed halfway (e.g. internet dropped)
+    Just run it again:  bash ~/RaktSetu/device/install.sh
+
+
+START FROM SCRATCH (deletes scans and training photos!)
+-------------------------------------------------------
+    rm -rf ~/RaktSetu ~/.config/nailscan-browser
+    git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh
+
+
+------------------------------------------------------------------------
+RaktSetu is a screening prototype, not a medical device. A "possible
+anemia" result must be confirmed with a hemoglobin blood test.
