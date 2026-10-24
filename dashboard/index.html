@@ -137,7 +137,12 @@
   .tone-panel small{display:block;font-size:.85rem;color:var(--ink-soft)}
 
   /* Metrics */
-  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:44px}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:44px}
+  .by-source{width:100%;border-collapse:separate;border-spacing:0;margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:.92rem}
+  .by-source th,.by-source td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line)}
+  .by-source tr:last-child td{border-bottom:0}
+  .by-source th{background:var(--night);color:#fff;font-weight:600;font-size:.76rem;letter-spacing:.05em;text-transform:uppercase}
+  .by-source td.warn{color:var(--red-deep);font-weight:700}
   .metric{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:30px 26px}
   .metric b{display:block;font-family:var(--serif);font-size:2.6rem;line-height:1.1;margin-bottom:10px;color:var(--red)}
   .metric p{font-size:.95rem}
@@ -515,6 +520,7 @@
           <li><strong>Imaging:</strong> camera module in a CAD-designed, light-shielded finger chamber with fixed illumination</li>
           <li><strong>Optical sensor:</strong> MAX30102 red and infrared module</li>
           <li><strong>Interface:</strong> custom screening UI with a two-way result, likely normal or refer</li>
+          <li><strong>Model:</strong> EfficientNet-B0 (transfer learning on ImageNet weights, ~4.05M parameters), fine-tuned for nail-bed pallor and exported to TensorFlow Lite (16.1 MB float32 / 4.9 MB int8) for on-device inference</li>
           <li><strong>Data:</strong> trained on Asare et al. (2022); validated on Yakimov et al. (2024)</li>
         </ul>
       </div>
@@ -679,19 +685,28 @@
       </div>
     </div>
 
-    <!-- RESULTS: once your validation sheet is final, replace each "In progress" with the real number -->
     <div class="metrics">
-      <div class="metric reveal"><b style="font-size:1.6rem">In progress</b><p>Sensitivity: share of anemic people RaktSetu correctly flags for a blood test.</p></div>
-      <div class="metric reveal"><b style="font-size:1.6rem">In progress</b><p>Specificity: share of non-anemic people it correctly clears.</p></div>
-      <div class="metric reveal"><b style="font-size:1.6rem">In progress</b><p>Mean absolute error of the haemoglobin estimate against lab values.</p></div>
+      <div class="metric reveal"><b>83.7%</b><p>Accuracy on the held-out test set.</p></div>
+      <div class="metric reveal"><b>79.8%</b><p>Sensitivity: share of anemic people RaktSetu correctly flags for a blood test.</p></div>
+      <div class="metric reveal"><b>95.1%</b><p>Specificity: share of non-anemic people it correctly clears.</p></div>
+      <div class="metric reveal"><b>0.937</b><p>AUC: how well the model ranks anemic above non-anemic (1.0 = perfect, 0.5 = guessing).</p></div>
     </div>
-    <p class="metric-note">Sensitivity, specificity and mean absolute error are being finalised from the validation run on the held-out set (Yakimov et al., 2024, n = 250), and will be published here once complete.</p>
+    <p class="metric-note">Results on a held-out test set of 485 images, never seen during training (combined from both datasets). The decision threshold was chosen on a separate validation set to target ≥85% sensitivity; on the untouched test set it achieved 79.8%, which is the honest, generalised figure.</p>
+
+    <table class="by-source" aria-label="Test results broken down by dataset">
+      <thead><tr><th>Test subset</th><th>n</th><th>Accuracy</th><th>Sensitivity</th><th>Specificity</th><th>AUC</th></tr></thead>
+      <tbody>
+        <tr><td>Ghana (children ≤5, darker skin)</td><td>377</td><td>86.2%</td><td>86.3%</td><td>85.7%</td><td>0.941</td></tr>
+        <tr><td>Yakimov (adults, lighter skin)</td><td>108</td><td>75.0%</td><td class="warn">0.0%</td><td>100%</td><td class="warn">0.582</td></tr>
+      </tbody>
+    </table>
 
     <div class="limits reveal">
       <h3>What is not solved yet</h3>
       <ul>
-        <li>The model has been trained on public data from Ghana. A Punjab dataset across ages and skin tones is the next build.</li>
-        <li>Validation so far is on a published dataset. Field testing against lab haemoglobin in Punjab is the next milestone.</li>
+        <li><strong>The model does not yet generalise across datasets.</strong> On the Ghana test subset it performs well (86% sensitivity), but on the Yakimov subset — adults, lighter skin, a population the training data barely covers — sensitivity drops to 0%: it did not correctly flag a single anemic case in that group. This is exactly the gap the two-dataset design was built to catch, and right now the model fails it.</li>
+        <li>The training data is heavily imbalanced toward anemic images from one source (Ghana) and non-anemic images from the other (Yakimov), which likely lets the model shortcut on dataset-specific cues rather than learning pallor itself — the per-source gap above is consistent with that.</li>
+        <li>The model has been trained on public data from Ghana and Russia, not Punjab. A Punjab dataset across ages and skin tones, paired with lab haemoglobin, is the next build — and necessary before this can be trusted on adult, Indian, brown-skinned users.</li>
         <li>RaktSetu flags who needs a blood test. It does not replace one.</li>
       </ul>
     </div>
