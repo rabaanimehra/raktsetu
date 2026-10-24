@@ -14,8 +14,8 @@
 **Portable, AI-based nail bed imaging for non-invasive anemia screening.**
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-DL%20Framework-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![ONNX](https://img.shields.io/badge/ONNX-Edge%20Export-005CED?logo=onnx&logoColor=white)](https://onnx.ai/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-Lite-FF6F00?logo=tensorflow&logoColor=white)](https://ai.google.dev/edge/litert)
+[![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-5-A22846?logo=raspberrypi&logoColor=white)](https://www.raspberrypi.com/)
 [![Status](https://img.shields.io/badge/status-research%20prototype-B3202F)]()
 [![License](https://img.shields.io/badge/license-unspecified-lightgrey)]()
 
@@ -29,7 +29,7 @@
 
 Pallor of the nail bed is a long-recognised clinical sign of anemia. RaktSetu trains deep learning models to read that sign automatically — estimating haemoglobin level and anemia likelihood from a standardised nail bed image, with no blood draw, no reagents, and no lab required.
 
-This repository holds the **machine learning core** of the project: data pipelines, model notebooks, and exported model artifacts for edge deployment.
+This repository holds the whole project: the model training notebook, the trained model, the software that runs on the Raspberry Pi device, and the project website.
 
 > ⚠️ **Disclaimer:** RaktSetu is a research prototype and a *screening aid*, not a diagnostic device. It is designed to help flag people who should get a confirmatory blood test — it does not replace clinical evaluation.
 
@@ -52,34 +52,45 @@ Globally, the WHO estimates anemia affects **~40% of children** aged 6–59 mont
 ## 🧠 How it works (pipeline)
 
 ```
-   finger / nail bed photo
+   finger in the enclosure, USB webcam (locked colour settings)
             │
             ▼
-   ┌─────────────────────┐
-   │  crop to nail region │   (bounding-box extraction)
-   └─────────┬───────────┘
-             ▼
-   ┌─────────────────────┐
-   │   SimpleCNN model    │   conv → pool → conv → pool → FC → FC
-   └─────────┬───────────┘
-             ▼
-   ┌─────────────────────┐
-   │ Hb estimate / result │   exported to ONNX for edge inference
-   └─────────────────────┘
+   ┌──────────────────────────┐
+   │ zoom / crop to one nail   │   operator frames the nail on the touchscreen
+   └────────────┬─────────────┘
+                ▼
+   ┌──────────────────────────┐
+   │ photo-quality checks      │   red clipping, brightness, sharpness, colour cast
+   └────────────┬─────────────┘
+                ▼
+   ┌──────────────────────────┐
+   │ EfficientNet-B0 (TFLite)  │   224 × 224 nail crop → anemia probability
+   └────────────┬─────────────┘
+                ▼
+   ┌──────────────────────────┐
+   │ report on the device      │   result, confidence, colour analysis, PDF
+   └──────────────────────────┘
 ```
+
+Everything runs offline on the Raspberry Pi 5. Images never leave the device.
 
 ---
 
 ## 📂 Repository structure
 
 ```
-Anemia-prediction/
-├── archive/                                     # dataset (metadata + cropped images)
-├── model.ipynb                                  # model training notebook (SimpleCNN, PyTorch)
-├── haemoglobin-level-from-fingernail-images.ipynb  # data exploration & pipeline notebook
-├── anemia_simplecnn_edge.pth                    # trained PyTorch checkpoint
-├── anemia_simplecnn_edge.onnx                   # exported ONNX model (edge-ready)
-├── anemia_simplecnn_edge.onnx.data              # external ONNX weights
+Rakt-Setu-/
+├── device/                      # runs on the Raspberry Pi 5
+│   ├── install.sh               # one-command installer
+│   ├── start_ui.sh              # opens the touchscreen interface
+│   ├── server.py                # Flask server: webcam, analysis, history
+│   ├── predict_pi.py            # model + webcam code, command-line tool
+│   ├── static/                  # interface (index.html, fonts, icon)
+│   └── models/                  # anemia_model_float32/int8.tflite, model_config.json
+├── training/
+│   └── anemia_nailbed_training.ipynb   # Colab notebook that trains the model
+├── dashboard/                   # project website and prototype photos
+├── LICENSE
 └── README.md
 ```
 
@@ -103,7 +114,7 @@ RaktSetu draws on two complementary, independently collected datasets.
 
 - 250 adult patients — **128 male**, **122 female**, aged **18–95**
 - Each patient has an **exact haemoglobin value** and a **Fitzpatrick skin type** (Type 1 – very light, to Type 6 – very dark)
-- Used to validate generalisation across skin tones and adult physiology
+- Used for training alongside the Ghana set, so the model sees adult and lighter-skinned nails; each nail is cropped from the hand photo and labelled anemic when Hb is below 120 g/L
 - 🔗 [doi.org/10.1038/s41597-024-03895-9](https://doi.org/10.1038/s41597-024-03895-9)
 
 Using a **paediatric, classification-labelled** dataset alongside an **adult, continuous-Hb** dataset lets the model be checked for two different failure modes at once: poor generalisation across age groups, and poor generalisation across skin tone — both common weak points in colour-based health-screening models.
@@ -112,59 +123,50 @@ Using a **paediatric, classification-labelled** dataset alongside an **adult, co
 
 ## 🏗️ Model
 
-The current baseline (`model.ipynb`) is a compact CNN built for edge deployment:
+`training/anemia_nailbed_training.ipynb` fine-tunes an ImageNet-pretrained **EfficientNet-B0** to classify a nail-bed crop as anemic or non-anemic, then exports it to **TensorFlow Lite** for the Raspberry Pi.
 
-```
-Input:  3 × 64 × 64 RGB nail-bed crop
-  │
-  ├─ Conv(3→32, 3×3) → ReLU → MaxPool(2×2)
-  ├─ Conv(32→64, 3×3) → ReLU → MaxPool(2×2)
-  ├─ Flatten (64×16×16)
-  ├─ FC(16384 → 128) → ReLU
-  └─ FC(128 → 1)              # haemoglobin regression output
-```
+- **Input:** 224 × 224 RGB nail crop, aspect ratio kept (letterbox)
+- **Training:** frozen-backbone phase, then fine-tuning of the top layers; class weights; augmentation that never alters hue or saturation, since colour is the signal
+- **Honest evaluation:** near-duplicate (augmented) images and photos of the same person are kept in the same split, so test images are truly unseen
+- **Decision threshold:** chosen on the validation set to catch at least 85% of anemic cases
 
-- **Framework:** PyTorch, exported to **ONNX** for lightweight/edge inference
-- **Training:** Adam optimiser, MSE loss, batch size 32
-- **Status:** early experimental baseline, trained on the validation dataset — accuracy and generalisation are still being actively improved, and the classification pipeline on the primary Ghana dataset is in progress
+**Test results** on 485 unseen public-dataset images:
 
-This is a **work in progress**, not a finished, validated model. Numbers here are from early experiments and should not be treated as a performance claim.
+| AUC | Accuracy | Sensitivity | Specificity |
+|---|---|---|---|
+| 0.937 | 83.7% | 79.8% | 95.1% |
+
+These figures come from the public datasets, not from photos taken in the RaktSetu enclosure. Validation on the device is the next step, and the interface can save labelled photos for exactly that.
 
 ---
 
 ## 🚀 Getting started
 
+### Run it on the Raspberry Pi 5
+
 ```bash
-git clone https://github.com/TanmoyD24/Anemia-prediction.git
-cd Anemia-prediction
-
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
-pip install torch torchvision onnx pandas numpy scikit-learn scikit-image pillow jupyter
-
-jupyter notebook model.ipynb
+git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu
+bash ~/RaktSetu/device/install.sh
 ```
 
-To run inference with the exported edge model:
+Then reboot once and double-click **NailScan** on the desktop. Full details are in [`device/README.md`](device/README.md).
 
-```python
-import onnxruntime as ort
+To update later: `cd ~/RaktSetu && git pull && bash device/install.sh`
 
-session = ort.InferenceSession("anemia_simplecnn_edge.onnx")
-# feed a preprocessed 1×3×64×64 nail-bed image tensor
-output = session.run(None, {"input": image_tensor})
-```
+### Retrain the model
+
+Open `training/anemia_nailbed_training.ipynb` in Google Colab with a T4 GPU and choose **Run all**. See [`training/README.md`](training/README.md).
 
 ---
 
 ## 🛣️ Roadmap
 
-- [ ] Finish wiring the primary Ghana dataset into the training pipeline
-- [ ] Move from Hb regression to a combined regression + anemic/non-anemic classification head
-- [ ] Cross-validate across both datasets (paediatric ↔ adult, skin tone range)
-- [ ] Quantize / optimise the ONNX model further for low-power edge hardware
-- [ ] Package inference into a simple CLI / app for the physical RaktSetu device
+- [x] Train on both the Ghana and Yakimov datasets with leakage-safe splits
+- [x] TFLite model running offline on the Raspberry Pi 5
+- [x] Touchscreen interface with live preview, quality checks and reports
+- [ ] Collect labelled photos with the device and retrain on them
+- [ ] Validate against blood-test hemoglobin across skin tones and age groups
+- [ ] Reduce the red tint from the enclosure (white floor insert, colour calibration)
 
 ---
 
