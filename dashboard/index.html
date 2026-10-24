@@ -644,16 +644,16 @@
     <p>The problems that shaped the current design.</p>
     <div class="fixes">
       <div class="fix reveal">
-        <div><small>Problem</small><p><span class="fill">What went wrong</span></p></div>
-        <div><small>What I changed</small><p><span class="fill">How you fixed it, and how you knew it worked</span></p></div>
+        <div><small>Problem</small><p>The same photo, sometimes rotated or flipped by the dataset's own augmentation, turned up labelled "anemic" in one folder and "not anemic" in another. Left alone, duplicates like this can land in both train and test, making accuracy look better than it is.</p></div>
+        <div><small>What I changed</small><p>Added a perceptual-hash check across all 8 rotations/flips of every image to group near-duplicates together, then forced each group to stay inside a single split. I know it worked because the pipeline now asserts zero shared duplicate groups between train and test before training is allowed to start — 6 conflicting groups were caught and resolved this way.</p></div>
       </div>
       <div class="fix reveal">
-        <div><small>Problem</small><p><span class="fill">What went wrong</span></p></div>
-        <div><small>What I changed</small><p><span class="fill">How you fixed it, and how you knew it worked</span></p></div>
+        <div><small>Problem</small><p>Of 5,010 downloaded images, 1,625 (about a third) were silently unusable because their folder or file names didn't match an exact "anemic / non-anemic" pattern.</p></div>
+        <div><small>What I changed</small><p>Built a flexible label matcher that recognises common naming variants (Anemic, anaemic, Non-Anemic, normal, healthy, and name-embedded labels like "anemic_12.jpg"), and made the pipeline print exactly how many images were kept vs. skipped, so data loss is visible instead of silent.</p></div>
       </div>
       <div class="fix reveal">
-        <div><small>Problem</small><p><span class="fill">What went wrong</span></p></div>
-        <div><small>What I changed</small><p><span class="fill">How you fixed it, and how you knew it worked</span></p></div>
+        <div><small>Problem</small><p>The two training datasets are badly imbalanced in opposite directions — almost all Ghana images are anemic, almost all Yakimov images are non-anemic. A model can "cheat" by learning which dataset a photo is from instead of learning what anemia looks like.</p></div>
+        <div><small>What I changed</small><p>Added class-weighted loss so errors on the minority class count more, and built a mandatory per-source accuracy report rather than a single blended number. Running it proved the shortcut is still happening — strong results on Ghana, 0% sensitivity on Yakimov (see Validation below) — so this is a real, still-open problem, not one I've solved yet.</p></div>
       </div>
     </div>
   </div>
