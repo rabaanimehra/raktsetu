@@ -1,0 +1,5 @@
+# keep shell scripts runnable on the Pi even when committed from Windows
+*.sh text eol=lf
+*.py text eol=lf
+*.tflite binary
+*.woff2 binary
