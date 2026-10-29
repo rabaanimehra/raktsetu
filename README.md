@@ -126,7 +126,7 @@ Reboot once, then open **NailScan** from the desktop. Details in [`device/README
 - Built with support from **CreatED** (learnwithcreated)
 - Datasets by Asare et al. (2022) and Yakimov et al. (2024)
 
-Full commit history from every contributor is preserved in this repository.
+Full commit history is preserved in this repository.
 
 ---
 
