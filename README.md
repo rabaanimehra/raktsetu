@@ -1,176 +1,136 @@
-```
-██████╗  █████╗ ██╗  ██╗████████╗███████╗███████╗████████╗██╗   ██╗
-██╔══██╗██╔══██╗██║ ██╔╝╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝██║   ██║
-██████╔╝███████║█████╔╝    ██║   ███████╗█████╗     ██║   ██║   ██║
-██╔══██╗██╔══██║██╔═██╗    ██║   ╚════██║██╔══╝     ██║   ██║   ██║
-██║  ██║██║  ██║██║  ██╗   ██║   ███████║███████╗   ██║   ╚██████╔╝
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚══════╝   ╚═╝    ╚═════╝
-```
-
 <div align="center">
 
-### A bridge between a fingernail and a healthier life 🩸
+# RaktSetu
 
-**Portable, AI-based nail bed imaging for non-invasive anemia screening.**
+### Non-invasive anaemia screening from a fingernail photo
+
+**A portable, offline, Raspberry Pi device that photographs the nail bed and flags likely anaemia, with no needle, no reagents and no lab.**
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![TensorFlow](https://img.shields.io/badge/TensorFlow-Lite-FF6F00?logo=tensorflow&logoColor=white)](https://ai.google.dev/edge/litert)
-[![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-5-A22846?logo=raspberrypi&logoColor=white)](https://www.raspberrypi.com/)
-[![Status](https://img.shields.io/badge/status-research%20prototype-B3202F)]()
-[![License](https://img.shields.io/badge/license-unspecified-lightgrey)]()
+[![TensorFlow Lite](https://img.shields.io/badge/TensorFlow-Lite-FF6F00?logo=tensorflow&logoColor=white)](https://ai.google.dev/edge/litert)
+[![Raspberry Pi 5](https://img.shields.io/badge/Raspberry%20Pi-5-A22846?logo=raspberrypi&logoColor=white)](https://www.raspberrypi.com/)
+[![Status](https://img.shields.io/badge/status-working%20prototype-B3202F)]()
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
+<img src="dashboard/proto-front.jpg" width="31%" alt="RaktSetu prototype, front"> <img src="dashboard/proto-angle-open.jpg" width="31%" alt="RaktSetu prototype, open chamber"> <img src="dashboard/proto-top.jpg" width="31%" alt="RaktSetu prototype, top">
+
+**[Evidence and proof of work →](PROOF.md)** &nbsp;·&nbsp; **[Run it on a Pi →](docs/RaktSetu_Pi_Setup.txt)** &nbsp;·&nbsp; **[Project site →](dashboard/index.html)**
 
 </div>
 
 ---
 
-## 📖 Overview
-
-**RaktSetu** (Hindi, *"blood bridge"*) is a research project exploring whether anemia can be screened **non-invasively**, using just a photograph of a fingernail bed.
-
-Pallor of the nail bed is a long-recognised clinical sign of anemia. RaktSetu trains deep learning models to read that sign automatically — estimating haemoglobin level and anemia likelihood from a standardised nail bed image, with no blood draw, no reagents, and no lab required.
-
-This repository holds the whole project: the model training notebook, the trained model, the software that runs on the Raspberry Pi device, and the project website.
-
-> ⚠️ **Disclaimer:** RaktSetu is a research prototype and a *screening aid*, not a diagnostic device. It is designed to help flag people who should get a confirmatory blood test — it does not replace clinical evaluation.
-
----
-
-## 🩺 Why this matters
+## At a glance
 
 | | |
 |---|---|
-| **57%** | of women aged 15–49 in India are anemic |
-| **67.1%** | of children aged 6–59 months in India are anemic |
-| **52.2%** | of pregnant women aged 15–49 in India are anemic |
+| **Problem** | 58.7% of women and 71.1% of young children in Punjab are anaemic (NFHS-5). Confirming it needs a blood test, so most people are never checked. |
+| **What RaktSetu does** | Finger goes in a light-sealed chamber, a fixed USB camera photographs the nail bed, an on-device model returns an anaemia flag in seconds. |
+| **Model** | EfficientNet-B0, fine-tuned, exported to TensorFlow Lite (float32 and int8) |
+| **Test result** | AUC **0.937**, accuracy **83.7%**, sensitivity **79.8%**, specificity **95.1%** on **485** unseen images |
+| **Runs on** | Raspberry Pi 5 + touchscreen + USB webcam, fully offline. Images never leave the device. |
+| **Stage** | Working prototype; next step is on-device validation against lab haemoglobin |
 
-*Source: National Family Health Survey-5 (NFHS-5), 2019–21, Ministry of Health and Family Welfare, Government of India.*
-
-Globally, the WHO estimates anemia affects **~40% of children** aged 6–59 months and **~30% of women** aged 15–49. Standard diagnosis — a venous or finger-prick blood test — is accurate but requires needles, consumables, and lab access that is often out of reach in low-resource settings. A fast, non-invasive first check can help close that gap.
+> RaktSetu is a screening aid, not a diagnostic device. A "possible anaemia" result must be confirmed with a haemoglobin blood test.
 
 ---
 
-## 🧠 How it works (pipeline)
+## How it works
 
 ```
-   finger in the enclosure, USB webcam (locked colour settings)
+ finger in light-sealed chamber, USB webcam with locked colour settings
             │
             ▼
-   ┌──────────────────────────┐
-   │ zoom / crop to one nail   │   operator frames the nail on the touchscreen
-   └────────────┬─────────────┘
-                ▼
-   ┌──────────────────────────┐
-   │ photo-quality checks      │   red clipping, brightness, sharpness, colour cast
-   └────────────┬─────────────┘
-                ▼
-   ┌──────────────────────────┐
-   │ EfficientNet-B0 (TFLite)  │   224 × 224 nail crop → anemia probability
-   └────────────┬─────────────┘
-                ▼
-   ┌──────────────────────────┐
-   │ report on the device      │   result, confidence, colour analysis, PDF
-   └──────────────────────────┘
+ zoom / crop to one nail ........ operator frames the nail on the touchscreen
+            │
+            ▼
+ photo-quality checks ........... red clipping, brightness, sharpness, colour cast
+            │
+            ▼
+ EfficientNet-B0 (TFLite) ....... 224 × 224 nail crop → anaemia probability
+            │
+            ▼
+ on-device report ............... result, confidence, colour analysis, PDF export
 ```
 
-Everything runs offline on the Raspberry Pi 5. Images never leave the device.
+If the person has a recent blood test, the operator can enter their haemoglobin and the photo is saved as labelled training data for retraining on device-captured images.
 
 ---
 
-## 📂 Repository structure
+## Repository map
 
 ```
-Rakt-Setu-/
-├── device/                      # runs on the Raspberry Pi 5
-│   ├── install.sh               # one-command installer
-│   ├── start_ui.sh              # opens the touchscreen interface
-│   ├── server.py                # Flask server: webcam, analysis, history
-│   ├── predict_pi.py            # model + webcam code, command-line tool
-│   ├── static/                  # interface (index.html, fonts, icon)
-│   └── models/                  # anemia_model_float32/int8.tflite, model_config.json
+raktsetu/
+├── PROOF.md                      evidence index: build timeline, results, hardware, what's next
+├── device/                       software that runs on the Raspberry Pi 5 (NailScan)
+│   ├── install.sh                one-command installer
+│   ├── server.py                 Flask server: webcam, analysis, history, reports
+│   ├── predict_pi.py             model + webcam code, also a CLI
+│   ├── static/                   touchscreen interface
+│   └── models/                   anaemia_model_float32/int8.tflite + model_config.json (metrics)
 ├── training/
-│   └── anemia_nailbed_training.ipynb   # Colab notebook that trains the model
-├── dashboard/                   # project website and prototype photos
-├── LICENSE
-└── README.md
+│   └── anemia_nailbed_training.ipynb    Colab notebook that trains and exports the model
+├── dashboard/                    project website + prototype photos
+├── docs/
+│   └── RaktSetu_Pi_Setup.txt     step-by-step Pi setup guide
+└── archive/
+    └── v1-simplecnn/             first model (SimpleCNN Hb regression), kept with its history
 ```
 
 ---
 
-## 🗂️ Datasets
+## Results
 
-RaktSetu draws on two complementary, independently collected datasets.
+From `device/models/model_config.json`, model trained 23 Oct 2026, decision threshold tuned on the validation set for ≥85% sensitivity.
 
-### 1. Primary — Ghana fingernail anemia dataset
-**Detection of Anemia using Colour of the Fingernails Image Dataset**, Asare et al., 2022, *Mendeley Data*
+| Model | n (test) | AUC | Accuracy | Sensitivity | Specificity |
+|---|---|---|---|---|---|
+| EfficientNet-B0, Keras | 485 | 0.937 | 83.7% | 79.8% | 95.1% |
+| TFLite float32 (on Pi, default) | 485 | 0.937 | 83.7% | 79.8% | 95.1% |
+| TFLite int8 (on Pi, small) | 485 | 0.920 | 83.9% | 83.1% | 86.2% |
 
-- 710 original images — **426 anemic**, **284 non-anemic**
-- 4,260 images after augmentation
-- Collected from children **aged 5 and under**, across **10 hospitals in Ghana**
-- Each image labelled anemic / non-anemic against a **laboratory haemoglobin value**
-- 🔗 [data.mendeley.com/datasets/2xx4j3kjg2/1](https://data.mendeley.com/datasets/2xx4j3kjg2/1)
+Split: 2,417 train / 483 validation / 485 test. Augmented copies and photos of the same person are always kept in the same split, so test images are truly unseen.
 
-### 2. Secondary (validation) — Skin & fingernail Hb dataset
-**Dataset of Human Skin and Fingernails Images for Non-Invasive Haemoglobin Level Assessment**, Yakimov et al., 2024, *Scientific Data*
-
-- 250 adult patients — **128 male**, **122 female**, aged **18–95**
-- Each patient has an **exact haemoglobin value** and a **Fitzpatrick skin type** (Type 1 – very light, to Type 6 – very dark)
-- Used for training alongside the Ghana set, so the model sees adult and lighter-skinned nails; each nail is cropped from the hand photo and labelled anemic when Hb is below 120 g/L
-- 🔗 [doi.org/10.1038/s41597-024-03895-9](https://doi.org/10.1038/s41597-024-03895-9)
-
-Using a **paediatric, classification-labelled** dataset alongside an **adult, continuous-Hb** dataset lets the model be checked for two different failure modes at once: poor generalisation across age groups, and poor generalisation across skin tone — both common weak points in colour-based health-screening models.
+These numbers are on public-dataset images, not photos taken in the RaktSetu chamber. On-device validation is the next milestone (see [PROOF.md](PROOF.md#whats-next)).
 
 ---
 
-## 🏗️ Model
+## Datasets
 
-`training/anemia_nailbed_training.ipynb` fine-tunes an ImageNet-pretrained **EfficientNet-B0** to classify a nail-bed crop as anemic or non-anemic, then exports it to **TensorFlow Lite** for the Raspberry Pi.
+1. **Asare et al., 2022, Mendeley Data.** Detection of Anemia using Colour of the Fingernails. 710 images of children ≤5 years from 10 hospitals in Ghana, labelled against lab haemoglobin. [doi.org/10.17632/2xx4j3kjg2.1](https://doi.org/10.17632/2xx4j3kjg2.1)
+2. **Yakimov et al., 2024, Scientific Data.** Human skin and fingernail images for non-invasive Hb assessment. 250 adults aged 18 to 95, exact Hb and Fitzpatrick skin type per patient. [doi.org/10.1038/s41597-024-03895-9](https://doi.org/10.1038/s41597-024-03895-9)
 
-- **Input:** 224 × 224 RGB nail crop, aspect ratio kept (letterbox)
-- **Training:** frozen-backbone phase, then fine-tuning of the top layers; class weights; augmentation that never alters hue or saturation, since colour is the signal
-- **Honest evaluation:** near-duplicate (augmented) images and photos of the same person are kept in the same split, so test images are truly unseen
-- **Decision threshold:** chosen on the validation set to catch at least 85% of anemic cases
-
-**Test results** on 485 unseen public-dataset images:
-
-| AUC | Accuracy | Sensitivity | Specificity |
-|---|---|---|---|
-| 0.937 | 83.7% | 79.8% | 95.1% |
-
-These figures come from the public datasets, not from photos taken in the RaktSetu enclosure. Validation on the device is the next step, and the interface can save labelled photos for exactly that.
+Combining a paediatric, classification-labelled set with an adult, continuous-Hb set exposes the model to two common failure modes of colour-based screening: age and skin tone.
 
 ---
 
-## 🚀 Getting started
+## Getting started
 
-### Run it on the Raspberry Pi 5
+**On a Raspberry Pi 5** (full guide in [`docs/RaktSetu_Pi_Setup.txt`](docs/RaktSetu_Pi_Setup.txt)):
 
 ```bash
-git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu
+git clone https://github.com/__GH_USER__/raktsetu.git ~/RaktSetu
 bash ~/RaktSetu/device/install.sh
 ```
 
-Then reboot once and double-click **NailScan** on the desktop. Full details are in [`device/README.md`](device/README.md).
+Reboot once, then open **NailScan** from the desktop. Details in [`device/README.md`](device/README.md).
 
-To update later: `cd ~/RaktSetu && git pull && bash device/install.sh`
-
-### Retrain the model
-
-Open `training/anemia_nailbed_training.ipynb` in Google Colab with a T4 GPU and choose **Run all**. See [`training/README.md`](training/README.md).
+**Retrain the model:** open `training/anemia_nailbed_training.ipynb` in Google Colab with a T4 GPU and choose Run all. See [`training/README.md`](training/README.md).
 
 ---
 
-## 🛣️ Roadmap
+## Team and credits
 
-- [x] Train on both the Ghana and Yakimov datasets with leakage-safe splits
-- [x] TFLite model running offline on the Raspberry Pi 5
-- [x] Touchscreen interface with live preview, quality checks and reports
-- [ ] Collect labelled photos with the device and retrain on them
-- [ ] Validate against blood-test hemoglobin across skin tones and age groups
-- [ ] Reduce the red tint from the enclosure (white floor insert, colour calibration)
+- **Rabaani Mehra**, project lead: problem framing, enclosure and device design, community screening, validation plan
+- Code contributions from a collaborator who has asked not to be named
+- Built with support from **CreatED** (learnwithcreated)
+- Datasets by Asare et al. (2022) and Yakimov et al. (2024)
+
+Full commit history from every contributor is preserved in this repository.
 
 ---
 
-## 📜 Citing the datasets
+## Citing the datasets
 
 ```
 Asare, J. et al. (2022). Detection of Anemia using Colour of the Fingernails
@@ -180,11 +140,3 @@ Yakimov, B. et al. (2024). Dataset of human skin and fingernails images for
 non-invasive haemoglobin level assessment. Scientific Data, 11, 1278.
 https://doi.org/10.1038/s41597-024-03895-9
 ```
-
----
-
-<div align="center">
-
-Built to make a first anemia check as simple as taking a photo.
-
-</div>

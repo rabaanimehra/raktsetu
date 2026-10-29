@@ -1,6 +1,6 @@
 RAKTSETU / NAILSCAN - RASPBERRY PI 5 SETUP GUIDE
 ================================================
-Repo: https://github.com/rabaanimehra/raktsetu
+Repo: https://github.com/__GH_USER__/raktsetu
 
 
 BEFORE YOU START
@@ -15,7 +15,7 @@ STEP 1 - INSTALL (one time only)
 --------------------------------
 Copy and paste this whole line into the terminal and press Enter:
 
-    git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh
+    git clone https://github.com/__GH_USER__/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh
 
 - Type your Pi password when asked (nothing shows while you type - that's normal).
 - Wait 3-10 minutes. It installs everything and tests the model.
@@ -24,7 +24,7 @@ Copy and paste this whole line into the terminal and press Enter:
 Want NailScan to open full screen automatically every time the Pi starts?
 Use this line instead of the one above:
 
-    git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh --autostart
+    git clone https://github.com/__GH_USER__/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh --autostart
 
 
 STEP 2 - REBOOT (one time only)
@@ -150,7 +150,7 @@ Install failed halfway (e.g. internet dropped)
 START FROM SCRATCH (deletes scans and training photos!)
 -------------------------------------------------------
     rm -rf ~/RaktSetu ~/.config/nailscan-browser
-    git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh
+    git clone https://github.com/__GH_USER__/raktsetu.git ~/RaktSetu && bash ~/RaktSetu/device/install.sh
 
 
 ------------------------------------------------------------------------
