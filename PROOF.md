@@ -102,4 +102,4 @@ Add these files here as they are ready; the website links to them.
 
 ## Credits
 
-Project lead: **Rabaani Mehra**. Code contributions from a collaborator who has asked not to be named. Version 1 model history preserved under `archive/v1-simplecnn/`. Built with support from **CreatED**. Datasets: Asare et al. (2022), Yakimov et al. (2024).
+Project lead: **Rabaani Mehra**. Code contributions from a collaborator who has asked not to be named. Version 1 model history preserved under `archive/v1-simplecnn/`. Datasets: Asare et al. (2022), Yakimov et al. (2024).

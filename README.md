@@ -123,7 +123,6 @@ Reboot once, then open **NailScan** from the desktop. Details in [`device/README
 
 - **Rabaani Mehra**, project lead: problem framing, enclosure and device design, community screening, validation plan
 - Code contributions from a collaborator who has asked not to be named
-- Built with support from **CreatED** (learnwithcreated)
 - Datasets by Asare et al. (2022) and Yakimov et al. (2024)
 
 Full commit history is preserved in this repository.
