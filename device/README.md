@@ -6,7 +6,7 @@ capture and the TensorFlow Lite model.
 ## Install
 
 ```bash
-git clone https://github.com/__GH_USER__/raktsetu.git ~/RaktSetu
+git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu
 bash ~/RaktSetu/device/install.sh
 ```
 

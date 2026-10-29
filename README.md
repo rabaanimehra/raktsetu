@@ -109,7 +109,7 @@ Combining a paediatric, classification-labelled set with an adult, continuous-Hb
 **On a Raspberry Pi 5** (full guide in [`docs/RaktSetu_Pi_Setup.txt`](docs/RaktSetu_Pi_Setup.txt)):
 
 ```bash
-git clone https://github.com/__GH_USER__/raktsetu.git ~/RaktSetu
+git clone https://github.com/rabaanimehra/raktsetu.git ~/RaktSetu
 bash ~/RaktSetu/device/install.sh
 ```
 
